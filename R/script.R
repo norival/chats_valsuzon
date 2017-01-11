@@ -1,8 +1,15 @@
+# convert the data files and rename them
+source("convert_data.R")
+
 # load the data files
 source("load_files.R")
 
+
 library("adehabitatHR")
 library("adehabitatLT")
+
+
+# -- tests ---------------------------------------------------------------------
 
 # simulate data
 xy <- matrix(runif(60), ncol = 2)
