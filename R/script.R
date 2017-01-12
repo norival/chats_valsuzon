@@ -5,72 +5,46 @@ source("convert_data.R")
 source("load_files.R")
 
 
-library("adehabitatHR")
-library("adehabitatLT")
-
-
-# -- tests ---------------------------------------------------------------------
-
-# simulate data
-xy <- matrix(runif(60), ncol = 2)
-
-# convert into sp object
-xysp <- SpatialPoints(xy)
-
-# convert it into a SpatialPolygonsDataFrame
-clu <- clusthr(xysp)
-plot(clu)
-
-# second animal
-xy2 <- matrix(runif(60), ncol = 2)
-
-# bind the two together
-xyt <- rbind(xy, xy2)
-
-# generate id for the animals
-id <- gl(2, 30)
-# convert it to SpatialPointsDataFrame
-idsp <- data.frame(id)
-coordinates(idsp) <- xyt
-class(idsp)
-
-clu2 <- clusthr(idsp)
-class(clu2)
-length(clu2)
-plot(clu2)
-
-# ------------------------------------------------------------------------------
-# exemple
-data(puechabonsp)
-names(puechabonsp)
-head(as.data.frame(puechabonsp$relocs))
-
-image(puechabonsp$map, col = grey(c(1:10/10)))
-plot(puechabonsp$relocs, add = TRUE,
-     col = as.data.frame(puechabonsp$relocs)[,1])
-
-a
-
-# ------------------------------------------------------------------------------
-
-# jah
-xy <- cbind(jah$Latitude, jah$Longitude)
-head(xy)
-xysp <- SpatialPoints(xy)
-clu <- clusthr(xysp)
-plot(clu)
-
-# ------------------------------------------------------------------------------
-devtools::install_github("dkahle/ggmap")
+library(adehabitatHR)
 library(ggmap)
 
-# plot(hadley)
-map <- get_map(location = c(lon = 4.8936, lat = 47.4151),
+
+# ------------------------------------------------------------------------------
+# plot cats data
+#
+# devtools::install_github("dkahle/ggmap")
+
+# try to get the tiles from stamen mirrors
+# map <- stri_replace_all(str = map, replacement = "http://c.b.", fixed = "http://")
+# url(map[1])
+# z <- tempfile()
+# download.file(map[1], z, mode = "wb")
+# pic <- readPNG(source = z)
+
+# get coordinates from cat dataframe
+jah_xy <- cbind(jah$Latitude, jah$Longitude)
+
+# convert the coordinates into spatial object
+jah_xysp <- SpatialPoints(jah_xy)
+
+# compute the habitat range with mcu method
+jah_mc <- mcp(jah_xysp)
+
+# get the map from google maps
+# better looking maps can be obtained from stamen but it does not work all the
+# time, might have some problems
+map <- get_map(location = c(lon = 4.902, lat = 47.410),
+               # source = "stamen",
                source = "google",
-               zoo = 12,
-               maptype = "terrain-background",
-               scale = "auto")
-p <- 
-  ggmap(map)
-p +
-  geom_polygon(clu, aes()
+               zoom = 15,
+               # urlonly = TRUE,
+               maptype = "terrain",
+               # maptype = "watercolor",
+               filename = "maps/suzon")
+
+# plot the map with the data of jah
+# ggplot2 uses fortify() to get the coordinates from the spatial object
+ggmap(map,
+      extent = "device",
+      base_layer = ggplot(data = jah_mc, aes(x = lat, y = long))) +
+  geom_polygon(alpha = 0.7)
