@@ -15,7 +15,7 @@ library(magrittr)
 rm(list = ls())
 
 # we create an empty list to store all cats data
-cats <- list()
+cats <- data.frame()
 
 for (src in list.files(path = "data", pattern = "csv$", full.names = TRUE)) {
   # get cat's name from file name
@@ -24,16 +24,14 @@ for (src in list.files(path = "data", pattern = "csv$", full.names = TRUE)) {
     stri_split_fixed(., pattern = "_", simplify = TRUE) %>%
     .[1, 1]
 
-  # check if this cat has already been read
-  if (!(cat_name %in% names(cats))) {
-    # this is the first file with this cat
-    # we create a new element in the list and intialize it with the first
-    # dataframe
-    cats[[cat_name]] <- read.csv(src)
-    # assign(cat_name, read.csv(src))
-  } else {
-    # this is not the first file that is read for this cat: the cat is back!
-    # we coerce the new data with the old
-    cats[[cat_name]] <- rbind.data.frame(cats[[cat_name]], read.csv(src))
-  }
+  # adds the data to the dataframe
+  cats <-
+    read.csv(src) %>%
+    cbind(., cat_name = cat_name) %>%
+    rbind.data.frame(cats, .)
+
 }
+
+cats$Date <- as.character(cats$Date)
+cats$Time <- as.character(cats$Time)
+cats$cat_name <- as.character(cats$cat_name)
