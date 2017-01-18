@@ -65,3 +65,18 @@ ggmap(map,
       extent = "device",
       base_layer = ggplot(data = cats_mc, aes(x = lat, y = long, fill = id))) +
   geom_polygon(alpha = 0.6)
+
+# ------------------------------------------------------------------------------
+# group all territories into one big territory
+# 
+# cats_mc_global <-
+#   cbind(cats$Latitude, cats$Longitude) %>%
+#   SpatialPoints() %>%
+#   mcp()
+# 
+# ggmap(map,
+#       extent = "device",
+#       base_layer = ggplot(data = cats_mc_global, aes(x = lat, y = long))) +
+#   geom_polygon(alpha = 0.6)
+#
+# this makes strange results
