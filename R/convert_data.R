@@ -14,8 +14,6 @@ patterns <- c("baghera", "duchesse", "teddy", "jah", "mistigris", "berlioz", "fu
 cats     <- c("baghera", "duchesse", "teddy", "jah", "mistigris", "berlioz", "fury", "symba", "kitkat", "zoe")
 
 for (src in list.files(data_old_dir, full.names = TRUE)) {
-  # print the file name, it's cool
-  print(src)
 
   # get file extension
   ext <-
@@ -53,7 +51,9 @@ for (src in list.files(data_old_dir, full.names = TRUE)) {
   if (ext == "gpx") {
     # file is gpx: convert it to csv and rename it
     gpx_to_csv(src, cat_name, output_dir = "data/")
+    cat("Converting", src, "to csv...\n")
   } else {
     rename_file(src, cat_name, "data/")
+    cat("Renaming", src, "...\n")
   }
 }
