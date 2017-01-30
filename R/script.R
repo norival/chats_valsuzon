@@ -33,6 +33,15 @@ map <- get_map(location = c(lon = 4.902, lat = 47.410),
                # maptype = "watercolor",
                filename = "maps/suzon")
 
+map2 <- get_map(location = c(lon = 4.902, lat = 47.410),
+                # source = "stamen",
+                source = "google",
+                zoom = 16,
+                # urlonly = TRUE,
+                maptype = "terrain",
+                # maptype = "watercolor",
+                filename = "maps/suzon")
+
 # ------------------------------------------------------------------------------
 # map each territory on one map
 #
@@ -64,7 +73,14 @@ for (i in levels(as.factor(cats$cat_name))) {
 ggmap(map,
       extent = "device",
       base_layer = ggplot(data = cats_mc, aes(x = lat, y = long, fill = id))) +
-  geom_polygon(alpha = 0.6)
+  geom_polygon(alpha = 0.6) +
+  geom_point(data = cats_addr, aes(x = long, y = lat, colour = cat_name), inherit.aes = FALSE)
+ggmap(map,
+      extent = "device",
+      base_layer = ggplot(data = cats_addr, aes(x = long, y = lat, colour = cat_name))) +
+  geom_point(position = position_dodge(0.9))
+cats_mc
+cats_addr
 
 # ------------------------------------------------------------------------------
 # group all territories into one big territory
