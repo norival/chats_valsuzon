@@ -17,7 +17,7 @@ rm(list = ls())
 # we create an empty list to store all cats data
 cats <- data.frame()
 
-for (src in list.files(path = "data", pattern = "csv$", full.names = TRUE)) {
+for (src in list.files(path = "data", pattern = "[[:lower:]]+_[[:digit:]_]", full.names = TRUE)) {
   # get cat's name from file name
   cat_name <-
     stri_split_fixed(src, pattern = "/", simplify = TRUE)[2] %>%
