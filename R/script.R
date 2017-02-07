@@ -9,6 +9,7 @@ addr <- read.csv("data/addr.csv", stringsAsFactors = FALSE)
 library(adehabitatHR)
 library(ggmap)
 library(dplyr)
+library(tikzDevice)
 
 # couleurs
 bop     <- rgb(184, 65, 31, max = 255)
@@ -340,3 +341,41 @@ library(tikzDevice)
 tikz("../../report/img/bootstrap.tex", width = 4, height = 2)
 plot(p)
 dev.off()
+
+
+# temps en forêt
+source("functions/forest.R")
+# rectangle <- data.frame(x = c(1, 2, 2, 1),
+#                         y = c(1, 1, 2, 2))
+# point <- c(0.5, 0.5)
+# point <- c(1.5, 1.5)
+# point <- c(1.5, 2.1)
+# p_in_rectangle(p = point, rectangle = rectangle)
+
+# x <- sample(x = 0:5, replace = TRUE, size = 100)
+# y <- sample(x = 0:5, replace = TRUE, size = 100)
+
+# cc <- cbind(x, y)
+# percent_in_forest(cc, rectangle)
+
+forest1 <- data.frame(x = c(47.406915, 47.417228, 47.421944, 47.413083),
+                      y = c(4.889973, 4.909132, 4.903603, 4.884238))
+
+forest2 <- data.frame(x = c(47.404284, 47.406217, 47.402600, 47.396131),
+                      y = c(4.887653, 4.893342, 4.896097, 4.883259))
+
+forest3 <- data.frame(x = c(47.406855, 47.416759, 47.412726, 47.403206),
+                      y = c(4.897497, 4.915226, 4.918545, 4.901372))
+
+forests <- list(forest1, forest2, forest3)
+
+perc_forest <- 0
+cats_forests <-
+  cats %>%
+  select(x = Latitude, y = Longitude)
+
+for (i in 1:length(forests)) {
+
+  perc_forest <- perc_forest + percent_in_forest(cats_forests, forests[[i]])
+
+}
