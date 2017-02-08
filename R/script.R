@@ -1,53 +1,47 @@
-# convert the data files and rename them
-source("convert_data.R")
+# -- chargement des données ----------------------------------------------------
+# conversion des données réçues vers le format csv
+# ne lancer que si besoin
+# source("convert_data.R")
 
-# load the data files
+# chargement des données
 source("load_files.R")
 addr <- read.csv("data/addr.csv", stringsAsFactors = FALSE)
 
-
+# -- chargement des packages ---------------------------------------------------
 library(adehabitatHR)
 library(ggmap)
 library(dplyr)
 library(tikzDevice)
 
-# couleurs
+# -- couleurs personnalisées ---------------------------------------------------
 bop     <- rgb(184, 65, 31, max = 255)
 my_gray <- rgb(76, 76, 76, max = 255)
 
-# ------------------------------------------------------------------------------
-# plot cats data
-#
-# devtools::install_github("dkahle/ggmap")
+# graines pour la générations desnombres aléatoires des bootstraps
+set.seed(42)
 
-# try to get the tiles from stamen mirrors
-# map <- stri_replace_all(str = map, replacement = "http://c.b.", fixed = "http://")
-# url(map[1])
-# z <- tempfile()
-# download.file(map[1], z, mode = "wb")
-# pic <- readPNG(source = z)
 
-# get the map from google maps
-# better looking maps can be obtained from stamen but it does not work all the
-# time, might have some problems
+# -- cartes des territoires ----------------------------------------------------
+# récupération du fond de carte sur google maps
 map <- get_map(location = c(lon = 4.902, lat = 47.410),
                source = "google",
                zoom = 15,
                maptype = "satellite",
                filename = "maps/suzon")
 
-
-# ------------------------------------------------------------------------------
-# map each territory on one map
-#
-# empty dataframe to store mcp results
+# dataframe pour stocker les valeurs des MCP
 cats_mc <- data.frame()
+
+# dataframe pour stocker les valeurs de surfaces d'habitats
 cats_area <-
   data.frame(cat_name = levels(as.factor(cats$cat_name)),
-             surface = numeric(length(levels(as.factor(cats$cat_name)))),
+             surface  = numeric(length(levels(as.factor(cats$cat_name)))),
              stringsAsFactors = FALSE)
 
 for (i in levels(as.factor(cats$cat_name))) {
+  # cette boucle calcule les tailles d'habitat et renvoie les polygones de
+  # chaque habitat
+
   # get the data for the cat 'i'
   the_cat <- cats[cats$cat_name == i, ]
 
@@ -60,11 +54,10 @@ for (i in levels(as.factor(cats$cat_name))) {
   the_cat_mc <-
     mcp(the_cat_xy) %>%
     fortify()
-  # mcp(the_cat_xy, unin = "km", unout = "m2") %>%
-  #   as.data.frame() %>%
-  #   print()
+
   # fill the id field with the name of the cat
   the_cat_mc$id <- i
+  # fill the address
   the_cat_mc$addr_lat   <- addr$lat[addr$cat_name == i]
   the_cat_mc$addr_long  <- addr$long[addr$cat_name == i]
 
@@ -74,35 +67,19 @@ for (i in levels(as.factor(cats$cat_name))) {
   # compute the area
   proj4string(the_cat_xy) <- CRS("+proj=longlat +datum=WGS84")
   res <- spTransform(the_cat_xy, CRS("+proj=utm +zone=31 ellps=WGS84"))
-  the_cat_area <- mcp.area(res, unin = "m", unout = "km2", percent = 95)
-  cats_area$surface[cats_area$cat_name == i] <- the_cat_area$a
 
+  the_cat_area <- mcp.area(res, unin = "m", unout = "km2", percent = 95, plotit = FALSE)
+  cats_area$surface[cats_area$cat_name == i] <- the_cat_area$a
 }
 
-# xy <- data.frame(ID = 1:2, X = c(118, 119), Y = c(10, 50))
-# coordinates(xy) <- c("X", "Y")
-# proj4string(xy) <- CRS("+proj=longlat +datum=WGS84")  ## for example
-
-# res <- spTransform(xy, CRS("+proj=utm +zone=31 ellps=WGS84"))
-# res
-
-# xy <- the_cat_xy
-# proj4string(xy) <- CRS("+proj=longlat +datum=WGS84")  ## for example
-# res <- spTransform(xy, CRS("+proj=utm +zone=31 ellps=WGS84"))
-# mcp.area(res, unin = "m", unout = "m2")
-
-# proj4string <- CRS("+proj=utm +zone=17N +ellps=WGS84")
-# the_cat_xy <-
-#   cbind(the_cat$Latitude, the_cat$Longitude) %>%
-#   SpatialPoints(., proj4string = proj4string)
-
 # plot the map
-# map 1 with half of the cats
+# map 1 with males
 cats_mc1 <-
   cats_mc %>%
   filter(id %in% c("baghera", "duchesse", "fury", "jah", "zoe")) %>%
   mutate(id = as.factor(id))
 
+# get names for better looking output
 levels(cats_mc1$id)[levels(cats_mc1$id) == "baghera"]   <- "Baghera"
 levels(cats_mc1$id)[levels(cats_mc1$id) == "duchesse"]  <- "Duchesse"
 levels(cats_mc1$id)[levels(cats_mc1$id) == "fury"]      <- "Fury"
@@ -120,9 +97,10 @@ ggmap(map,
          size = FALSE,
          fill = FALSE) +
   theme(strip.text = element_text(size = rel(2)))
-ggsave(filename = "../../report/img/map_females.jpg", plot = p)
+# ggsave(filename = "../../report/img/map_females.jpg", plot = p)
+ggsave(filename = "img/map_females.jpg", plot = p)
 
-# map 2 with other half of the cats
+# map 2 with females
 cats_mc2 <-
   cats_mc %>%
   filter(!(id %in% c("baghera", "duchesse", "fury", "jah", "zoe"))) %>%
@@ -147,29 +125,9 @@ p <-
   theme(strip.text = element_text(size = rel(2)))
 ggsave(filename = "../../report/img/map_males.jpg", plot = p)
 
-# ------------------------------------------------------------------------------
-# group all territories into one big territory
-# 
-# cats_mc_global <-
-#   cbind(cats$Latitude, cats$Longitude) %>%
-#   SpatialPoints() %>%
-#   mcp()
-# 
-# ggmap(map,
-#       extent = "device",
-#       base_layer = ggplot(data = cats_mc_global, aes(x = lat, y = long))) +
-#   geom_polygon(alpha = 0.6)
-#
-# this makes strange results
-
-
 # Taillles d'habitat
 cats_area$sex <- c("female", "male", "female", "female", "female", "male", "male", "male", "male", "female")
 cats_area$castrated <- c("N", "N", "O", "N", "O", "O", "N", "O", "O", "O")
-
-cats_area %>%
-  ggplot(aes(x = sex, y = surface, fill = castrated)) +
-  geom_boxplot()
 
 
 # -- bootstrap -----------------------------------------------------------------
@@ -239,8 +197,8 @@ res_d <- data.frame(comp = c("Sexe", "Statut"),
 p <-
   res_d %>%
   ggplot(aes(x = d, y = comp)) +
-  geom_point(size = 4, colour = bop) +
   geom_errorbarh(aes(xmin = inf, xmax = sup), height = 0.2) +
+  geom_point(size = 4, colour = bop) +
   geom_vline(xintercept = 0, lty = "dotted") +
   xlab("\\textit{d} de Cohen") +
   ylab("") +
@@ -323,8 +281,8 @@ res_boot$bootstrap <- factor(res_boot$bootstrap, levels = c("Mâles", "Femelles"
 p <-
   res_boot %>%
   ggplot(aes(x = mean_boot, y = bootstrap)) +
-  geom_point(size = 4, colour = bop) +
   geom_errorbarh(aes(xmin = inf, xmax = sup), height = 0.2) +
+  geom_point(size = 4, colour = bop) +
   xlab("Moyenne bootstrapée (km\\textsuperscript{2})") +
   ylab("") +
   xlim(-0.05, 0.7) +
@@ -337,8 +295,7 @@ p <-
         axis.title    = element_text(size = 10),
         panel.border  = element_blank())
 
-library(tikzDevice)
-tikz("../../report/img/bootstrap.tex", width = 4, height = 2)
+tikz("../../report/img/bootstrap_homerange.tex", width = 4, height = 2)
 plot(p)
 dev.off()
 
@@ -369,13 +326,218 @@ forest3 <- data.frame(x = c(47.406855, 47.416759, 47.412726, 47.403206),
 
 forests <- list(forest1, forest2, forest3)
 
-perc_forest <- 0
-cats_forests <-
+
+cats$sex <- character(nrow(cats))
+cats$sex[cats$cat_name == "baghera"]    <- "female"
+cats$sex[cats$cat_name == "berlioz"]    <- "male"
+cats$sex[cats$cat_name == "duchesse"]   <- "female"
+cats$sex[cats$cat_name == "fury"]       <- "female"
+cats$sex[cats$cat_name == "jah"]        <- "female"
+cats$sex[cats$cat_name == "kitkat"]     <- "male"
+cats$sex[cats$cat_name == "mistigris"]  <- "male"
+cats$sex[cats$cat_name == "symba"]      <- "male"
+cats$sex[cats$cat_name == "teddy"]      <- "male"
+cats$sex[cats$cat_name == "zoe"]        <- "female"
+
+cats$statut <- character(nrow(cats))
+cats$statut[cats$cat_name == "baghera"]    <- "n_castr"
+cats$statut[cats$cat_name == "berlioz"]    <- "n_castr"
+cats$statut[cats$cat_name == "duchesse"]   <- "castr"
+cats$statut[cats$cat_name == "fury"]       <- "n_castr"
+cats$statut[cats$cat_name == "jah"]        <- "castr"
+cats$statut[cats$cat_name == "kitkat"]     <- "castr"
+cats$statut[cats$cat_name == "mistigris"]  <- "n_castr"
+cats$statut[cats$cat_name == "symba"]      <- "castr"
+cats$statut[cats$cat_name == "teddy"]      <- "castr"
+cats$statut[cats$cat_name == "zoe"]        <- "castr"
+
+# temps moyen en forêt par sexe
+cats_female <-
   cats %>%
+  filter(sex == "female") %>%
   select(x = Latitude, y = Longitude)
 
+perc_forest_females <- 0
 for (i in 1:length(forests)) {
+  perc_forest_females <- perc_forest_females + percent_in_forest(cats_female, forests[[i]])
+}
 
-  perc_forest <- perc_forest + percent_in_forest(cats_forests, forests[[i]])
+cats_male <-
+  cats %>%
+  filter(sex == "male") %>%
+  select(x = Latitude, y = Longitude)
+
+perc_forest_males <- 0
+for (i in 1:length(forests)) {
+  perc_forest_males <- perc_forest_males + percent_in_forest(cats_male, forests[[i]])
+}
+
+# temps moyen en forêt par statut
+cats_castr <-
+  cats %>%
+  filter(statut == "castr") %>%
+  select(x = Latitude, y = Longitude)
+
+perc_forest_castr <- 0
+for (i in 1:length(forests)) {
+  perc_forest_castr <- perc_forest_castr + percent_in_forest(cats_castr, forests[[i]])
+}
+
+cats_n_castr <-
+  cats %>%
+  filter(statut == "n_castr") %>%
+  select(x = Latitude, y = Longitude)
+
+perc_forest_n_castr <- 0
+for (i in 1:length(forests)) {
+  perc_forest_n_castr <- perc_forest_n_castr + percent_in_forest(cats_n_castr, forests[[i]])
+}
+
+percent_forest <-
+  data.frame(cat_name = levels(as.factor(cats$cat_name)),
+             perc_forest = numeric(length(levels(as.factor(cats$cat_name)))))
+
+for (name in levels(as.factor(cats$cat_name))) {
+
+  perc_forest <- 0
+  the_cat <-
+    cats %>%
+    filter(cat_name == name) %>%
+    select(x = Latitude, y = Longitude)
+
+  for (i in 1:length(forests)) {
+    perc_forest <- perc_forest + percent_in_forest(the_cat, forests[[i]])
+  }
+
+  percent_forest$perc_forest[percent_forest$cat_name == name] <- perc_forest
 
 }
+
+percent_forest$sex <- character(nrow(percent_forest))
+percent_forest$sex[percent_forest$cat_name == "baghera"]    <- "female"
+percent_forest$sex[percent_forest$cat_name == "berlioz"]    <- "male"
+percent_forest$sex[percent_forest$cat_name == "duchesse"]   <- "female"
+percent_forest$sex[percent_forest$cat_name == "fury"]       <- "female"
+percent_forest$sex[percent_forest$cat_name == "jah"]        <- "female"
+percent_forest$sex[percent_forest$cat_name == "kitkat"]     <- "male"
+percent_forest$sex[percent_forest$cat_name == "mistigris"]  <- "male"
+percent_forest$sex[percent_forest$cat_name == "symba"]      <- "male"
+percent_forest$sex[percent_forest$cat_name == "teddy"]      <- "male"
+percent_forest$sex[percent_forest$cat_name == "zoe"]        <- "female"
+
+percent_forest$statut <- character(nrow(percent_forest))
+percent_forest$statut[percent_forest$cat_name == "baghera"]    <- "n_castr"
+percent_forest$statut[percent_forest$cat_name == "berlioz"]    <- "n_castr"
+percent_forest$statut[percent_forest$cat_name == "duchesse"]   <- "castr"
+percent_forest$statut[percent_forest$cat_name == "fury"]       <- "n_castr"
+percent_forest$statut[percent_forest$cat_name == "jah"]        <- "castr"
+percent_forest$statut[percent_forest$cat_name == "kitkat"]     <- "castr"
+percent_forest$statut[percent_forest$cat_name == "mistigris"]  <- "n_castr"
+percent_forest$statut[percent_forest$cat_name == "symba"]      <- "castr"
+percent_forest$statut[percent_forest$cat_name == "teddy"]      <- "castr"
+percent_forest$statut[percent_forest$cat_name == "zoe"]        <- "castr"
+
+# ------------------------------------------------------------------------------
+# moyennes bootstrapées pour le temps passé en forêt
+nbboot <- 10000
+
+males <-
+  percent_forest %>%
+  filter(sex == "male") %>%
+  .$perc_forest
+moyboot_males <- numeric(nbboot)
+
+for (i in 1:nbboot) {
+  x2          <- sample(males, replace = TRUE)
+  moyboot_males[i]  <- mean(x2)
+}
+
+females <-
+  percent_forest %>%
+  filter(sex == "female") %>%
+  .$perc_forest
+moyboot_females <- numeric(nbboot)
+
+for (i in 1:nbboot) {
+  x2          <- sample(females, replace = TRUE)
+  moyboot_females[i]  <- mean(x2)
+}
+
+castr <-
+  percent_forest %>%
+  filter(statut == "castr") %>%
+  .$perc_forest
+moyboot_castr <- numeric(nbboot)
+
+for (i in 1:nbboot) {
+  x2          <- sample(castr, replace = TRUE)
+  moyboot_castr[i]  <- mean(x2)
+}
+
+non_castr <-
+  percent_forest %>%
+  filter(statut == "n_castr") %>%
+  .$perc_forest
+moyboot_non_castr <- numeric(nbboot)
+
+for (i in 1:nbboot) {
+  x2          <- sample(non_castr, replace = TRUE)
+  moyboot_non_castr[i]  <- mean(x2)
+}
+
+res_boot <- data.frame(bootstrap = c("Mâles", "Femelles", "Castrés", "Non castrés"),
+                       mean_boot = c(mean(moyboot_males),
+                                     mean(moyboot_females),
+                                     mean(moyboot_castr),
+                                     mean(moyboot_non_castr)),
+                       inf = c(quantile(moyboot_males, c(0.025, 0.975))[1],
+                               quantile(moyboot_females, c(0.025, 0.975))[1],
+                               quantile(moyboot_castr, c(0.025, 0.975))[1],
+                               quantile(moyboot_non_castr, c(0.025, 0.975))[1]),
+                       sup = c(quantile(moyboot_males, c(0.025, 0.975))[2],
+                               quantile(moyboot_females, c(0.025, 0.975))[2],
+                               quantile(moyboot_castr, c(0.025, 0.975))[2],
+                               quantile(moyboot_non_castr, c(0.025, 0.975))[2]))
+
+res_boot$bootstrap <- factor(res_boot$bootstrap, levels = c("Mâles", "Femelles", "Castrés", "Non castrés"))
+
+p <-
+  res_boot %>%
+  ggplot(aes(x = mean_boot, y = bootstrap)) +
+  geom_errorbarh(aes(xmin = inf, xmax = sup), height = 0.2) +
+  geom_point(size = 4, colour = bop) +
+  xlab("Moyenne bootstrapée (\\%)") +
+  ylab("") +
+  # xlim(-0.05, 0.7) +
+  geom_vline(xintercept = 0, lty = "dotted") +
+  theme_bw() +
+  theme(panel.grid    = element_blank(),
+        axis.line.x   = element_line(size = 0.5, colour = "black"),
+        axis.text   = element_text(size = 9),
+        axis.ticks.y  = element_blank(),
+        axis.title    = element_text(size = 10),
+        panel.border  = element_blank())
+
+tikz("../../report/img/bootstrap_forest.tex", width = 4, height = 2)
+plot(p)
+dev.off()
+
+
+# ------------------------------------------------------------------------------
+# description du jeu de données
+source("functions/tab2latex.R")
+
+cats$Date <- as.Date(cats$Date)
+cats_summary <-
+  cats %>%
+  group_by(cat_name) %>%
+  summarise(date_min  = min(Date),
+            date_max  = max(Date),
+            duration  = date_max - date_min,
+            n_obs     = length(Date)) %>%
+  arrange(desc(duration))
+
+# tab2latex(x = cats_summary,
+#           fileName = "../../report/tables/summary_cats.tex",
+#           col.names = c("Chat", "Première date", "Dernière date", "Durée", "n"),
+#           align = "lRRrr")
